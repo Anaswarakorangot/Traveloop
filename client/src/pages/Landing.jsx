@@ -12,28 +12,81 @@ export default function Landing() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const scrollToSection = () => {
-    const heroSection = document.getElementById('hero-section');
-    heroSection?.scrollIntoView({ behavior: 'smooth' });
-  };
-
   return (
     <div className="w-full bg-slate-950 text-white overflow-hidden">
-      {/* SECTION 1: Hero Section with Voyare */}
-      <section id="hero-section" className="min-h-screen bg-gradient-to-b from-teal-800 via-teal-700 to-slate-800 pt-20 pb-20 px-6 lg:px-12 relative overflow-hidden">
-        <div className={`max-w-7xl mx-auto transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-          {/* Header */}
-          <div className="mb-16">
-            <h1 className="text-5xl lg:text-7xl font-light tracking-wider mb-6 text-balance">
+      {/* SECTION 1: HERO SECTION - VOYARE */}
+      <section className="min-h-screen bg-gradient-to-b from-teal-800 via-teal-700 to-slate-800 pt-20 pb-20 px-6 lg:px-12 relative overflow-hidden flex items-center">
+        {/* Animated background blobs */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-20 right-10 w-96 h-96 bg-cyan-400 rounded-full mix-blend-multiply filter blur-3xl animate-blob"></div>
+          <div className="absolute bottom-20 left-10 w-96 h-96 bg-teal-400 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-2000"></div>
+        </div>
+
+        {/* Navigation Bar */}
+        <div className="absolute top-0 left-0 right-0 z-50 pt-6 px-6 lg:px-12">
+          <div className="max-w-7xl mx-auto flex justify-between items-center">
+            <div className="text-2xl font-light tracking-widest">VOYARE</div>
+            <div className="hidden lg:flex gap-8 items-center">
+              <a href="#" className="text-gray-300 hover:text-cyan-300 transition-colors">About Us</a>
+              <a href="#" className="text-gray-300 hover:text-cyan-300 transition-colors">Destinations</a>
+              <a href="#" className="text-gray-300 hover:text-cyan-300 transition-colors">Travel Packages</a>
+              <a href="#" className="text-gray-300 hover:text-cyan-300 transition-colors">Offers</a>
+              <a href="#" className="text-gray-300 hover:text-cyan-300 transition-colors">Contact</a>
+              <button className="px-6 py-2 bg-white text-teal-700 hover:bg-gray-100 transition-colors rounded-full font-medium">
+                Book Now
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto w-full relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            {/* Left Content */}
+            <div className={`transition-all duration-1000 ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-20'}`}>
+              <h1 className="text-6xl lg:text-7xl font-light tracking-wider mb-8 text-balance leading-tight">
+                Unforgettable Travel Moments by Voyare
+              </h1>
+              <p className="text-gray-200 text-lg leading-relaxed mb-10">
+                We take you beyond the ordinary, to places where cultures come alive, landscapes leave you breathless, and every moment becomes a story to tell.
+              </p>
+              <button className="px-8 py-3 border-2 border-white text-white hover:bg-white hover:text-teal-700 transition-all duration-300 font-medium tracking-wider">
+                DISCOVER MORE
+              </button>
+            </div>
+
+            {/* Right Visual - Airplane Icon with gradient */}
+            <div className={`relative h-96 lg:h-full min-h-96 transition-all duration-1000 ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-20'}`}>
+              <div className="absolute inset-0 bg-gradient-to-br from-cyan-200 via-teal-200 to-blue-300 rounded-3xl shadow-2xl flex items-center justify-center overflow-hidden">
+                <div className="relative w-full h-full flex items-center justify-center">
+                  <Plane className="w-40 h-40 text-teal-700 animate-pulse" style={{ transform: `rotate(-45deg)` }} />
+                  <div className="absolute inset-0 bg-gradient-to-t from-teal-700/20 to-transparent"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Scroll Down Indicator */}
+        <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 animate-bounce">
+          <ChevronDown className="w-8 h-8 text-white opacity-50" />
+        </div>
+      </section>
+
+      {/* SECTION 2: GALLERY SECTION */}
+      <section className="min-h-screen bg-gradient-to-b from-slate-800 via-teal-900 to-slate-900 pt-20 pb-16 px-6 lg:px-12">
+        <div className="max-w-7xl mx-auto">
+          {/* Gallery Header */}
+          <div className={`mb-16 transition-all duration-1000 ${scrollY > 400 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+            <h2 className="text-5xl lg:text-7xl font-light tracking-wider mb-6 text-balance">
               GALLERY
-            </h1>
+            </h2>
             <p className="text-gray-300 text-lg max-w-2xl leading-relaxed">
               Explore our curated collection of extraordinary travel moments and hidden gems from around the world. Discover the enchanting beauty and captivating allure.
             </p>
           </div>
 
           {/* Gallery Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+          <div className={`grid grid-cols-1 md:grid-cols-3 gap-6 mb-16 transition-all duration-1000 ${scrollY > 500 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
             {/* Large image */}
             <div className="md:col-span-1 md:row-span-2 group cursor-pointer">
               <div className="h-96 bg-gradient-to-br from-cyan-500 to-teal-600 rounded-lg overflow-hidden relative shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:scale-105">
@@ -63,16 +116,29 @@ export default function Landing() {
             ))}
           </div>
 
-          {/* Discover Story Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center py-12">
+          {/* CTA Section below Gallery */}
+          <div className={`bg-gradient-to-r from-slate-700 to-slate-800 p-12 rounded-lg text-center transition-all duration-1000 ${scrollY > 800 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+            <h3 className="text-3xl font-light tracking-wide mb-4">We invite you to uncover the enchanting beauty and captivating allure of Hawaii</h3>
+            <p className="text-gray-300 mb-8 text-lg">A tropical haven where every experience is unforgettable</p>
+            <button className="px-8 py-3 bg-cyan-400 text-slate-900 hover:bg-cyan-300 transition-all duration-300 font-medium tracking-wider">
+              EXPLORE HAWAII
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION 3: DISCOVER WINGLY STORY */}
+      <section className="min-h-screen bg-gradient-to-b from-slate-900 to-teal-900 py-20 px-6 lg:px-12 flex items-center">
+        <div className="max-w-7xl mx-auto w-full">
+          <div className={`grid grid-cols-1 lg:grid-cols-2 gap-12 items-center transition-all duration-1000 ${scrollY > 1200 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
             <div>
-              <h2 className="text-3xl lg:text-5xl font-light tracking-wide mb-6 text-balance">
+              <h2 className="text-5xl lg:text-6xl font-light tracking-wide mb-6 text-balance">
                 DISCOVER WINGLY STORY
               </h2>
-              <p className="text-gray-300 text-base leading-relaxed mb-8">
-                Simply a sensory island where the Pacific. A famous tourism hub for pristine tropical surroundings, silky beaches, vibrant nightlife, and fascinating cuisine.
+              <p className="text-gray-300 text-lg leading-relaxed mb-8">
+                Simply a sensory island journey where the Pacific becomes your playground. A famous tourism hub for pristine tropical surroundings, silky beaches, vibrant nightlife, and fascinating cuisine.
               </p>
-              <button className="px-8 py-3 border border-cyan-400 text-cyan-300 hover:bg-cyan-400 hover:text-slate-900 transition-all duration-300 font-medium tracking-wider">
+              <button className="px-8 py-3 border-2 border-cyan-400 text-cyan-300 hover:bg-cyan-400 hover:text-slate-900 transition-all duration-300 font-medium tracking-wider">
                 EXPLORE MORE
               </button>
             </div>
@@ -81,75 +147,51 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* SECTION 2: Hero Divider */}
-      <section className="relative h-32 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-900 to-teal-800" style={{ transform: `translateY(${scrollY * 0.5}px)` }}></div>
-        <div className="relative h-full flex items-center justify-center">
-          <ChevronDown className="w-8 h-8 text-cyan-300 animate-bounce" />
-        </div>
-      </section>
-
-      {/* SECTION 3: Hero Section */}
-      <section id="hero-section" className="min-h-screen bg-gradient-to-b from-teal-800 via-teal-700 to-slate-800 pt-20 pb-20 px-6 lg:px-12 relative overflow-hidden">
-        {/* Animated background */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-20 right-10 w-96 h-96 bg-cyan-400 rounded-full mix-blend-multiply filter blur-3xl animate-blob"></div>
-          <div className="absolute bottom-20 left-10 w-96 h-96 bg-teal-400 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-2000"></div>
-        </div>
-
-        <div className="max-w-7xl mx-auto relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center mb-20">
-            {/* Left Content */}
-            <div className={`transition-all duration-1000 ${scrollY > 400 ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-20'}`}>
-              <div className="mb-4 text-cyan-300 text-sm tracking-widest uppercase">OUR TOUR</div>
-              <h2 className="text-6xl lg:text-7xl font-light tracking-wide mb-8 text-balance leading-tight">
-                FIND PEACE, STAY FOR WONDER.
-              </h2>
-              <p className="text-gray-200 text-lg leading-relaxed mb-8 max-w-lg">
-                Escape to a tropical island where serenity meets breathtaking beauty and extraordinary adventure unfolds around every horizon.
-              </p>
-              <button className="px-8 py-3 border border-white text-white hover:bg-white hover:text-teal-700 transition-all duration-300 font-medium tracking-wider">
-                BOOK NOW
-              </button>
-            </div>
-
-            {/* Right Visual - Airplane */}
-            <div className={`relative h-96 lg:h-full min-h-96 transition-all duration-1000 ${scrollY > 400 ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-20'}`}>
-              <div className="absolute inset-0 bg-gradient-to-br from-cyan-200 via-teal-200 to-blue-300 rounded-3xl shadow-2xl flex items-center justify-center overflow-hidden">
-                {/* Airplane Icon Animation */}
-                <div className="relative w-full h-full flex items-center justify-center">
-                  <Plane className="w-32 h-32 text-teal-700 animate-pulse" style={{ transform: `rotate(-45deg)` }} />
-                  <div className="absolute inset-0 bg-gradient-to-t from-teal-700/20 to-transparent"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Beauty Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center py-20 border-t border-teal-600/30">
+      {/* SECTION 4: BEAUTY SECTION */}
+      <section className="min-h-screen bg-gradient-to-b from-teal-900 to-slate-900 py-20 px-6 lg:px-12 flex items-center">
+        <div className="max-w-7xl mx-auto w-full">
+          <div className={`grid grid-cols-1 lg:grid-cols-2 gap-12 items-center transition-all duration-1000 ${scrollY > 1600 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
             {/* Left Visual */}
-            <div className={`h-80 bg-gradient-to-br from-emerald-300 to-cyan-300 rounded-2xl shadow-xl transition-all duration-1000 ${scrollY > 800 ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}></div>
+            <div className="h-80 bg-gradient-to-br from-emerald-300 to-cyan-300 rounded-2xl shadow-xl"></div>
 
             {/* Right Content */}
-            <div className={`transition-all duration-1000 ${scrollY > 800 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-              <h3 className="text-5xl lg:text-6xl font-light tracking-wide mb-8 text-balance">
+            <div>
+              <div className="text-cyan-300 text-sm tracking-widest uppercase mb-4">OUR TOUR</div>
+              <h2 className="text-6xl lg:text-7xl font-light tracking-wide mb-8 text-balance">
                 BEAUTY
-              </h3>
-              <p className="text-gray-200 text-lg leading-relaxed mb-8">
-                Discover pristine beaches, lush tropical landscapes, and crystalline waters that create an unforgettable paradise for every traveler.
+              </h2>
+              <h3 className="text-2xl font-light mb-6 text-gray-200">Find Peace, Stay for Wonder</h3>
+              <p className="text-gray-300 text-lg leading-relaxed mb-8">
+                Discover pristine beaches, lush tropical landscapes, and crystalline waters that create an unforgettable paradise for every traveler. Escape to serenity and embrace the magic of nature.
               </p>
-              <div className="flex gap-4">
-                <button className="px-6 py-2 bg-cyan-400 text-slate-900 hover:bg-cyan-300 transition-colors duration-300 font-medium tracking-wider">
-                  EXPLORE
-                </button>
-              </div>
+              <button className="px-8 py-3 bg-cyan-400 text-slate-900 hover:bg-cyan-300 transition-colors duration-300 font-medium tracking-wider">
+                EXPLORE
+              </button>
             </div>
           </div>
         </div>
       </section>
 
-      {/* SECTION 4: Features Section */}
-      <section className="min-h-screen bg-gradient-to-b from-slate-800 via-slate-900 to-slate-950 py-20 px-6 lg:px-12">
+      {/* SECTION 5: TRANSPORTATION */}
+      <section className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 py-20 px-6 lg:px-12 flex items-center">
+        <div className="max-w-7xl mx-auto w-full">
+          <div className={`transition-all duration-1000 ${scrollY > 2000 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+            <h2 className="text-5xl lg:text-6xl font-light tracking-wide mb-8 text-balance">
+              TRANSPORTATION
+            </h2>
+            <p className="text-gray-300 text-lg leading-relaxed mb-12 max-w-2xl">
+              Seamless travel arrangements with luxury accommodations and transfers included. We handle every detail of your journey, from flights to local transport, ensuring a smooth and comfortable experience.
+            </p>
+            <div className="h-96 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-2xl shadow-2xl mb-12"></div>
+            <button className="px-8 py-3 border-2 border-white text-white hover:bg-white hover:text-slate-900 transition-all duration-300 font-medium tracking-wider">
+              BOOK YOUR TRANSPORT
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION 6: Features Grid */}
+      <section className="min-h-screen bg-gradient-to-b from-slate-950 to-slate-900 py-20 px-6 lg:px-12">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-6xl lg:text-7xl font-light tracking-wider mb-20 text-center text-balance">
             EXPERIENCE THE BEAUTY OF ISLAND WINGLY SHORES
@@ -184,7 +226,7 @@ export default function Landing() {
                 <div
                   key={idx}
                   className={`p-8 bg-gradient-to-br from-teal-900/40 to-cyan-900/40 border border-teal-600/30 rounded-lg hover:border-cyan-400/60 hover:shadow-lg hover:shadow-cyan-400/20 transition-all duration-500 group cursor-pointer transform hover:scale-105 ${
-                    scrollY > 1200 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+                    scrollY > 2400 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
                   }`}
                   style={{ transitionDelay: `${idx * 100}ms` }}
                 >
@@ -198,7 +240,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* SECTION 5: Call to Action */}
+      {/* SECTION 7: Call to Action */}
       <section className="py-20 px-6 lg:px-12 bg-gradient-to-t from-slate-950 to-slate-800">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-5xl lg:text-6xl font-light tracking-wide mb-8 text-balance">
@@ -213,7 +255,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Scroll indicator */}
+      {/* Styles */}
       <style>{`
         @keyframes blob {
           0%, 100% { transform: translate(0, 0) scale(1); }
