@@ -142,7 +142,9 @@ export default function Landing() {
                 EXPLORE MORE
               </button>
             </div>
-            <div className="h-80 bg-gradient-to-br from-cyan-300 to-emerald-400 rounded-lg shadow-2xl"></div>
+            <div className="h-80 rounded-lg shadow-2xl overflow-hidden">
+              <img src="/amalfi-coast.jpg" alt="Amalfi Coast" className="w-full h-full object-cover hover:scale-110 transition-transform duration-500" />
+            </div>
           </div>
         </div>
       </section>
