@@ -12,6 +12,9 @@ import activityRoutes from './routes/activity.routes.js';
 import searchRoutes from './routes/search.routes.js';
 import communityRoutes from './routes/community.routes.js';
 import adminRoutes from './routes/admin.routes.js';
+import checklistTemplateRoutes from './routes/checklist-template.routes.js';
+import weatherRoutes from './routes/weather.routes.js';
+import aiRoutes from './routes/ai.routes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 dotenv.config();
@@ -34,7 +37,7 @@ const limiter = rateLimit({
 app.use('/api', limiter);
 
 // Body parsing
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Health check
@@ -51,6 +54,9 @@ app.use('/api/activities', activityRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/community', communityRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/checklist', checklistTemplateRoutes);
+app.use('/api/weather', weatherRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Error handler
 app.use(errorHandler);

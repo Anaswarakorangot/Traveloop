@@ -24,6 +24,8 @@ export const tripsApi = {
 
   // Budget
   getBudget: (tripId) => client.get(`/trips/${tripId}/budget`),
+  getDailyBudget: (tripId) => client.get(`/trips/${tripId}/budget/daily`),
+  getExpenseSummary: (tripId) => client.get(`/trips/${tripId}/expense-summary`),
 
   // Expenses
   getExpenses: (tripId) => client.get(`/trips/${tripId}/expenses`),
@@ -43,4 +45,9 @@ export const tripsApi = {
   addNote: (tripId, data) => client.post(`/trips/${tripId}/notes`, data),
   updateNote: (tripId, noteId, data) => client.put(`/trips/${tripId}/notes/${noteId}`, data),
   deleteNote: (tripId, noteId) => client.delete(`/trips/${tripId}/notes/${noteId}`),
+
+  // Sharing & Export
+  shareTrip: (tripId) => client.post(`/trips/${tripId}/share`),
+  getSharedTrip: (token) => client.get(`/trips/shared/${token}`),
+  exportTrip: (tripId) => client.get(`/trips/${tripId}/export`),
 }

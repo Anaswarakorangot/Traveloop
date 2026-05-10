@@ -1,44 +1,91 @@
-import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { Search, Filter, MapPin, Clock, Star, DollarSign } from 'lucide-react'
+import { useEffect, useState, useRef } from 'react'
+import { useSearchParams, Link } from 'react-router-dom'
+import { Search, MapPin, Star, Heart, X, TrendingUp, Filter, DollarSign } from 'lucide-react'
 import { Card, CardTitle } from '../components/common/Card'
-import { Badge } from '../components/common/Badge'
 import { Button } from '../components/common/Button'
+import { Badge } from '../components/common/Badge'
 import { CardSkeleton } from '../components/common/Skeleton'
+import { toast } from '../components/common/Toast'
 import { searchApi } from '../api/search'
 import { citiesApi } from '../api/cities'
 import { activitiesApi } from '../api/activities'
-
-const categories = [
-  'all', 'sightseeing', 'food', 'adventure', 'culture', 'nightlife', 'shopping', 'wellness'
-]
+import { tripsApi } from '../api/trips'
+import { useAuthStore } from '../store/authStore'
+import { usersApi } from '../api/users'
 
 export default function Explore() {
+  const { user } = useAuthStore()
   const [searchParams, setSearchParams] = useSearchParams()
   const [query, setQuery] = useState(searchParams.get('q') || '')
-  const [category, setCategory] = useState('all')
-  const [results, setResults] = useState({ cities: [], activities: [] })
-  const [popularCities, setPopularCities] = useState([])
+  const [results, setResults] = useState({ cities: [], activities: [], trips: [] })
+  const [trending, setTrending] = useState([])
   const [isLoading, setIsLoading] = useState(false)
+  const [cities, setCities] = useState([])
+  const [activeType, setActiveType] = useState('all')
+  const [priceRange, setPriceRange] = useState([0, 500])
+  const [savedIds, setSavedIds] = useState(new Set())
+  const timerRef = useRef(null)
 
   useEffect(() => {
-    citiesApi.getPopular(12).then(res => setPopularCities(res.data))
-  }, [])
-
-  useEffect(() => {
-    if (query.length >= 2) {
-      setIsLoading(true)
-      searchApi.search({
-        q: query,
-        category: category !== 'all' ? category : undefined,
-        limit: 20
-      })
-        .then(res => setResults(res.data))
-        .finally(() => setIsLoading(false))
-    } else {
-      setResults({ cities: [], activities: [] })
+    citiesApi.getPopular(12).then(r => setCities(r.data)).catch(() => {})
+    searchApi.trending().then(r => setTrending(r.data)).catch(() => {})
+    if (user?.id) {
+      usersApi.getSavedDestinations(user.id).then(r => {
+        setSavedIds(new Set(r.data.map(c => c.id)))
+      }).catch(() => {})
     }
-  }, [query, category])
+  }, [user?.id])
+
+  // Debounced search
+  useEffect(() => {
+    if (activeType === 'all' && query.length < 2) {
+      setResults({ cities: [], activities: [], trips: [] })
+      return
+    }
+
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(async () => {
+      setIsLoading(true)
+      try {
+        if (query.length >= 2) {
+          const params = { q: query, limit: 20 }
+          if (activeType !== 'all') params.type = activeType
+          const { data } = await searchApi.search(params)
+          setResults(data)
+        } else {
+          // No query, but a specific type is selected
+          if (activeType === 'city') {
+            const { data } = await citiesApi.getAll({ limit: 20 })
+            setResults({ cities: data, activities: [], trips: [] })
+          } else if (activeType === 'activity') {
+            const { data } = await activitiesApi.getAll({ limit: 20 })
+            setResults({ cities: [], activities: data, trips: [] })
+          } else if (activeType === 'trip') {
+            const { data } = await tripsApi.getAll({ limit: 20 })
+            setResults({ cities: [], activities: [], trips: data })
+          }
+        }
+      } catch { console.error('Search failed') }
+      finally { setIsLoading(false) }
+    }, 300)
+  }, [query, activeType])
+
+  const toggleSave = async (cityId) => {
+    if (!user) return
+    try {
+      if (savedIds.has(cityId)) {
+        await usersApi.unsaveDestination(user.id, cityId)
+        setSavedIds(prev => { const next = new Set(prev); next.delete(cityId); return next })
+        toast.success('Removed from saved')
+      } else {
+        await usersApi.saveDestination(user.id, cityId)
+        setSavedIds(prev => new Set(prev).add(cityId))
+        toast.success('Saved destination!')
+      }
+    } catch { toast.error('Failed to update') }
+  }
+
+  const hasResults = results.cities.length > 0 || results.activities.length > 0 || results.trips.length > 0
 
   return (
     <div className="space-y-6">
@@ -47,126 +94,142 @@ export default function Explore() {
       {/* Search */}
       <div className="relative">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" size={20} />
-        <input
-          type="text"
-          placeholder="Search activities, cities..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="w-full pl-12 pr-4 py-3 bg-surface border border-border rounded-xl text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary"
-        />
+        <input type="text" value={query} onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search cities, activities, or trips..."
+          className="w-full pl-12 pr-10 py-3 bg-surface border border-border rounded-xl text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary text-lg" />
+        {query && <button onClick={() => { setQuery(''); setResults({ cities: [], activities: [], trips: [] }) }}
+          className="absolute right-4 top-1/2 -translate-y-1/2 text-muted hover:text-white"><X size={18} /></button>}
       </div>
 
-      {/* Categories */}
-      <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4">
-        {categories.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setCategory(cat)}
-            className={`px-4 py-2 rounded-full text-sm capitalize whitespace-nowrap transition-colors ${
-              category === cat
-                ? 'bg-primary text-white'
-                : 'bg-surface text-muted hover:text-white'
-            }`}
-          >
-            {cat}
+      {/* Type filters */}
+      <div className="flex gap-2">
+        {['all', 'city', 'activity', 'trip'].map(type => (
+          <button key={type} onClick={() => setActiveType(type)}
+            className={`px-4 py-1.5 rounded-full text-sm capitalize transition-colors ${activeType === type ? 'bg-primary text-white' : 'bg-surface text-muted hover:text-white'}`}>
+            {type === 'all' ? '🔍 All' : type === 'city' ? '🏙️ Cities' : type === 'activity' ? '🎯 Activities' : '✈️ Trips'}
           </button>
         ))}
       </div>
 
-      {/* Results */}
+      {/* Trending */}
+      {!query && trending.length > 0 && (
+        <div>
+          <p className="text-sm text-muted mb-2 flex items-center gap-1"><TrendingUp size={14} /> Trending searches</p>
+          <div className="flex flex-wrap gap-2">
+            {trending.map(t => (
+              <button key={t.query} onClick={() => setQuery(t.query)}
+                className="px-3 py-1.5 bg-surface border border-border rounded-full text-sm text-muted hover:text-white hover:border-primary transition-colors">
+                {t.query}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Search Results */}
       {isLoading ? (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3, 4, 5, 6].map(i => <CardSkeleton key={i} />)}
+          {[1, 2, 3].map(i => <CardSkeleton key={i} />)}
         </div>
-      ) : query.length >= 2 ? (
+      ) : (query || activeType !== 'all') && hasResults ? (
         <div className="space-y-6">
-          {/* Cities */}
-          {results.cities?.length > 0 && (
-            <section>
-              <CardTitle className="mb-4">Cities</CardTitle>
+          {results.cities.length > 0 && (
+            <div>
+              <CardTitle className="mb-3">Cities</CardTitle>
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {results.cities.map(city => (
-                  <Card key={city.id} hover>
-                    <div className="h-32 -mx-4 -mt-4 mb-4 rounded-t-xl overflow-hidden">
-                      <img
-                        src={city.imageUrl || `https://source.unsplash.com/400x300/?${city.name}`}
-                        alt={city.name}
-                        className="w-full h-full object-cover"
-                      />
+                  <Card key={city.id} hover className="overflow-hidden group relative">
+                    <div className="h-32 -mx-4 -mt-4 mb-3 relative">
+                      <img src={city.imageUrl} alt={city.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                      <div className="absolute bottom-2 left-3">
+                        <p className="text-white font-semibold">{city.name}</p>
+                        <p className="text-white/70 text-xs">{city.country}</p>
+                      </div>
                     </div>
-                    <h3 className="font-semibold text-white">{city.name}</h3>
-                    <p className="text-sm text-muted">{city.country}</p>
+                    <button onClick={() => toggleSave(city.id)} className="absolute top-2 right-2 p-1.5 bg-black/30 rounded-full hover:bg-black/50 transition-colors">
+                      <Heart size={16} className={savedIds.has(city.id) ? 'text-danger fill-danger' : 'text-white'} />
+                    </button>
+                    {city.description && <p className="text-sm text-muted line-clamp-2">{city.description}</p>}
                   </Card>
                 ))}
               </div>
-            </section>
+            </div>
           )}
-
-          {/* Activities */}
-          {results.activities?.length > 0 && (
-            <section>
-              <CardTitle className="mb-4">Activities</CardTitle>
+          {results.activities.length > 0 && (
+            <div>
+              <CardTitle className="mb-3">Activities</CardTitle>
               <div className="grid md:grid-cols-2 gap-4">
                 {results.activities.map(activity => (
-                  <Card key={activity.id} hover>
-                    <div className="flex gap-4">
-                      <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0">
-                        <img
-                          src={activity.imageUrl || `https://source.unsplash.com/200x200/?${activity.category}`}
-                          alt={activity.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-white truncate">{activity.name}</h3>
-                        <p className="text-sm text-muted">{activity.city?.name}</p>
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          <Badge variant="primary">{activity.category}</Badge>
-                          {activity.rating > 0 && (
-                            <span className="text-xs text-secondary flex items-center gap-1">
-                              <Star size={12} /> {activity.rating}
-                            </span>
-                          )}
-                          {activity.costMin && (
-                            <span className="text-xs text-muted flex items-center gap-1">
-                              <DollarSign size={12} /> ${activity.costMin}-${activity.costMax}
-                            </span>
-                          )}
-                        </div>
+                  <Card key={activity.id} hover className="flex gap-3">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-white">{activity.name}</h3>
+                      <p className="text-xs text-muted">{activity.city?.name}, {activity.city?.country}</p>
+                      <div className="flex items-center gap-3 mt-2">
+                        <Badge variant="default" className="capitalize text-xs">{activity.category}</Badge>
+                        {activity.rating > 0 && <span className="text-xs text-amber-400 flex items-center gap-0.5"><Star size={12} fill="currentColor" /> {Number(activity.rating).toFixed(1)}</span>}
+                        {activity.costMin && <span className="text-xs text-muted">${Number(activity.costMin)}-${Number(activity.costMax)}</span>}
                       </div>
                     </div>
                   </Card>
                 ))}
               </div>
-            </section>
+            </div>
           )}
-
-          {results.cities?.length === 0 && results.activities?.length === 0 && (
-            <Card className="text-center py-12">
-              <p className="text-muted">No results found for "{query}"</p>
-            </Card>
+          {results.trips.length > 0 && (
+            <div>
+              <CardTitle className="mb-3">Trips</CardTitle>
+              <div className="grid md:grid-cols-2 gap-4">
+                {results.trips.map(trip => (
+                  <Link key={trip.id} to={`/trips/${trip.id}`}>
+                    <Card hover>
+                      <h3 className="font-semibold text-white">{trip.title}</h3>
+                      <p className="text-sm text-muted mt-1">{trip.description?.slice(0, 100)}</p>
+                      <div className="flex items-center gap-2 mt-2 text-xs text-muted">
+                        <span>by {trip.user?.firstName}</span>
+                        {trip.stops?.map(s => <span key={s.city?.name}><MapPin size={10} className="inline" /> {s.city?.name}</span>)}
+                      </div>
+                    </Card>
+                  </Link>
+                ))}
+              </div>
+            </div>
           )}
         </div>
+      ) : (query || activeType !== 'all') && !hasResults ? (
+        <Card className="text-center py-12">
+          <div className="text-5xl mb-4">🔍</div>
+          <p className="text-muted">No results for "{query}"</p>
+        </Card>
       ) : (
-        /* Popular Cities */
-        <section>
-          <CardTitle className="mb-4">Popular Destinations</CardTitle>
-          <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {popularCities.map(city => (
-              <Card key={city.id} hover className="overflow-hidden">
-                <div className="h-32 -mx-4 -mt-4 mb-4">
-                  <img
-                    src={city.imageUrl || `https://source.unsplash.com/400x300/?${city.name}`}
-                    alt={city.name}
-                    className="w-full h-full object-cover"
-                  />
+        /* Popular Destinations (when not searching) */
+        <div>
+          <CardTitle className="mb-3">Popular Destinations</CardTitle>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {cities.map(city => (
+              <Card key={city.id} hover className="overflow-hidden group relative">
+                <div className="h-40 -mx-4 -mt-4 mb-3 relative">
+                  <img src={city.imageUrl} alt={city.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                  <div className="absolute bottom-3 left-4">
+                    <p className="text-white font-bold text-lg">{city.name}</p>
+                    <p className="text-white/70 text-sm">{city.country}</p>
+                  </div>
                 </div>
-                <h3 className="font-semibold text-white">{city.name}</h3>
-                <p className="text-sm text-muted">{city.country}</p>
+                <button onClick={() => toggleSave(city.id)} className="absolute top-3 right-3 p-2 bg-black/30 rounded-full hover:bg-black/50 transition-colors">
+                  <Heart size={18} className={savedIds.has(city.id) ? 'text-danger fill-danger' : 'text-white'} />
+                </button>
+                {city.description && <p className="text-sm text-muted line-clamp-2">{city.description}</p>}
+                {city.costIndex && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <Badge variant="default">{'$'.repeat(Math.round(Number(city.costIndex)))}</Badge>
+                    {city.region && <span className="text-xs text-muted">{city.region}</span>}
+                  </div>
+                )}
               </Card>
             ))}
           </div>
-        </section>
+        </div>
       )}
     </div>
   )

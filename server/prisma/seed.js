@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 
 const prisma = new PrismaClient();
 
@@ -19,159 +20,215 @@ async function main() {
   await prisma.trip.deleteMany();
   await prisma.activity.deleteMany();
   await prisma.city.deleteMany();
+  await prisma.checklistTemplate.deleteMany();
   await prisma.user.deleteMany();
   console.log('Cleared existing data');
 
-  // Create admin user
-  const adminPassword = await bcrypt.hash('Admin123!', 12);
-  const admin = await prisma.user.create({
-    data: {
-      email: 'admin@traveloop.app',
-      passwordHash: adminPassword,
-      firstName: 'Admin',
-      lastName: 'User',
-      role: 'admin',
-      city: 'San Francisco',
-      country: 'USA',
-      bio: 'Traveloop administrator'
-    }
-  });
-  console.log('Created admin user');
+  const pw = await bcrypt.hash('Admin123!', 12);
+  const upw = await bcrypt.hash('User123!', 12);
 
-  // Create demo users
-  const userPassword = await bcrypt.hash('User123!', 12);
-  const user1 = await prisma.user.create({
-    data: {
-      email: 'john@example.com',
-      passwordHash: userPassword,
-      firstName: 'John',
-      lastName: 'Traveler',
-      city: 'New York',
-      country: 'USA',
-      bio: 'Adventure seeker and food lover.'
-    }
-  });
+  const admin = await prisma.user.create({ data: { email:'admin@traveloop.app', passwordHash:pw, firstName:'Admin', lastName:'User', role:'admin', city:'San Francisco', country:'USA', bio:'Traveloop administrator' }});
+  const user1 = await prisma.user.create({ data: { email:'john@example.com', passwordHash:upw, firstName:'John', lastName:'Traveler', city:'New York', country:'USA', bio:'Adventure seeker and food lover. 🌍' }});
+  const user2 = await prisma.user.create({ data: { email:'sarah@example.com', passwordHash:upw, firstName:'Sarah', lastName:'Explorer', city:'London', country:'UK', bio:'Solo traveler and photographer. 📸' }});
+  const user3 = await prisma.user.create({ data: { email:'mike@example.com', passwordHash:upw, firstName:'Mike', lastName:'Wanderer', city:'Berlin', country:'Germany', bio:'Digital nomad exploring the world.' }});
+  console.log('Created users');
 
-  const user2 = await prisma.user.create({
-    data: {
-      email: 'sarah@example.com',
-      passwordHash: userPassword,
-      firstName: 'Sarah',
-      lastName: 'Explorer',
-      city: 'London',
-      country: 'UK',
-      bio: 'Solo traveler and photographer.'
-    }
-  });
-  console.log('Created demo users');
-
-  // Create cities sequentially
   const cityData = [
-    { name: 'Tokyo', country: 'Japan', region: 'Asia', latitude: 35.6762, longitude: 139.6503, costIndex: 4.2, popularity: 95, imageUrl: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800', description: 'Ultra-modern meets traditional' },
-    { name: 'Bangkok', country: 'Thailand', region: 'Asia', latitude: 13.7563, longitude: 100.5018, costIndex: 2.1, popularity: 88, imageUrl: 'https://images.unsplash.com/photo-1508009603885-50cf7c579365?w=800', description: 'Vibrant street life' },
-    { name: 'Bali', country: 'Indonesia', region: 'Asia', latitude: -8.3405, longitude: 115.0920, costIndex: 2.0, popularity: 90, imageUrl: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=800', description: 'Tropical paradise' },
-    { name: 'Paris', country: 'France', region: 'Europe', latitude: 48.8566, longitude: 2.3522, costIndex: 4.0, popularity: 98, imageUrl: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800', description: 'City of Light' },
-    { name: 'Barcelona', country: 'Spain', region: 'Europe', latitude: 41.3851, longitude: 2.1734, costIndex: 3.2, popularity: 92, imageUrl: 'https://images.unsplash.com/photo-1583422409516-2895a77efded?w=800', description: 'Gaudi architecture' },
-    { name: 'Rome', country: 'Italy', region: 'Europe', latitude: 41.9028, longitude: 12.4964, costIndex: 3.5, popularity: 94, imageUrl: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=800', description: 'Ancient history' },
-    { name: 'London', country: 'UK', region: 'Europe', latitude: 51.5074, longitude: -0.1278, costIndex: 4.5, popularity: 96, imageUrl: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=800', description: 'Historic landmarks' },
-    { name: 'New York', country: 'USA', region: 'North America', latitude: 40.7128, longitude: -74.0060, costIndex: 4.8, popularity: 97, imageUrl: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=800', description: 'City that never sleeps' },
-    { name: 'Dubai', country: 'UAE', region: 'Middle East', latitude: 25.2048, longitude: 55.2708, costIndex: 4.3, popularity: 91, imageUrl: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800', description: 'Futuristic luxury' },
-    { name: 'Sydney', country: 'Australia', region: 'Oceania', latitude: -33.8688, longitude: 151.2093, costIndex: 4.0, popularity: 93, imageUrl: 'https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?w=800', description: 'Iconic harbor' },
+    { name:'Tokyo', country:'Japan', region:'Asia', latitude:35.6762, longitude:139.6503, costIndex:4.2, popularity:95, imageUrl:'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800', description:'Ultra-modern meets traditional' },
+    { name:'Bangkok', country:'Thailand', region:'Asia', latitude:13.7563, longitude:100.5018, costIndex:2.1, popularity:88, imageUrl:'https://images.unsplash.com/photo-1508009603885-50cf7c579365?w=800', description:'Vibrant street life and temples' },
+    { name:'Bali', country:'Indonesia', region:'Asia', latitude:-8.3405, longitude:115.0920, costIndex:2.0, popularity:90, imageUrl:'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=800', description:'Tropical paradise with rice terraces' },
+    { name:'Paris', country:'France', region:'Europe', latitude:48.8566, longitude:2.3522, costIndex:4.0, popularity:98, imageUrl:'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800', description:'City of Light and romance' },
+    { name:'Barcelona', country:'Spain', region:'Europe', latitude:41.3851, longitude:2.1734, costIndex:3.2, popularity:92, imageUrl:'https://images.unsplash.com/photo-1583422409516-2895a77efded?w=800', description:'Gaudí architecture and beaches' },
+    { name:'Rome', country:'Italy', region:'Europe', latitude:41.9028, longitude:12.4964, costIndex:3.5, popularity:94, imageUrl:'https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=800', description:'Ancient history and cuisine' },
+    { name:'London', country:'UK', region:'Europe', latitude:51.5074, longitude:-0.1278, costIndex:4.5, popularity:96, imageUrl:'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=800', description:'Historic landmarks and culture' },
+    { name:'New York', country:'USA', region:'North America', latitude:40.7128, longitude:-74.0060, costIndex:4.8, popularity:97, imageUrl:'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=800', description:'City that never sleeps' },
+    { name:'Dubai', country:'UAE', region:'Middle East', latitude:25.2048, longitude:55.2708, costIndex:4.3, popularity:91, imageUrl:'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800', description:'Futuristic luxury in the desert' },
+    { name:'Sydney', country:'Australia', region:'Oceania', latitude:-33.8688, longitude:151.2093, costIndex:4.0, popularity:93, imageUrl:'https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?w=800', description:'Iconic harbor and beaches' },
+    { name:'Istanbul', country:'Turkey', region:'Europe', latitude:41.0082, longitude:28.9784, costIndex:2.5, popularity:87, imageUrl:'https://images.unsplash.com/photo-1524231757912-21f4fe3a7200?w=800', description:'Where East meets West' },
+    { name:'Amsterdam', country:'Netherlands', region:'Europe', latitude:52.3676, longitude:4.9041, costIndex:3.8, popularity:89, imageUrl:'https://images.unsplash.com/photo-1534351590666-13e3e96b5017?w=800', description:'Canals, bikes, and art' },
+    { name:'Prague', country:'Czech Republic', region:'Europe', latitude:50.0755, longitude:14.4378, costIndex:2.8, popularity:85, imageUrl:'https://images.unsplash.com/photo-1519677100203-a0e668c92439?w=800', description:'Fairy-tale medieval city' },
+    { name:'Lisbon', country:'Portugal', region:'Europe', latitude:38.7223, longitude:-9.1393, costIndex:2.9, popularity:86, imageUrl:'https://images.unsplash.com/photo-1585208798174-6cedd86e019a?w=800', description:'Colorful tiles and pastel de nata' },
+    { name:'Seoul', country:'South Korea', region:'Asia', latitude:37.5665, longitude:126.9780, costIndex:3.3, popularity:84, imageUrl:'https://images.unsplash.com/photo-1534274988757-a28bf1a57c17?w=800', description:'K-culture and street food' },
+    { name:'Cape Town', country:'South Africa', region:'Africa', latitude:-33.9249, longitude:18.4241, costIndex:2.4, popularity:82, imageUrl:'https://images.unsplash.com/photo-1580060839134-75a5edca2e99?w=800', description:'Table Mountain and vineyards' },
+    { name:'Rio de Janeiro', country:'Brazil', region:'South America', latitude:-22.9068, longitude:-43.1729, costIndex:2.6, popularity:83, imageUrl:'https://images.unsplash.com/photo-1483729558449-99ef09a8c325?w=800', description:'Carnival, beaches, and samba' },
+    { name:'Singapore', country:'Singapore', region:'Asia', latitude:1.3521, longitude:103.8198, costIndex:4.1, popularity:90, imageUrl:'https://images.unsplash.com/photo-1525625293386-3f8f99389edd?w=800', description:'Garden city of the future' },
+    { name:'Marrakech', country:'Morocco', region:'Africa', latitude:31.6295, longitude:-7.9811, costIndex:1.8, popularity:80, imageUrl:'https://images.unsplash.com/photo-1597212618440-806262de4f6b?w=800', description:'Souks, spices, and riads' },
+    { name:'Vienna', country:'Austria', region:'Europe', latitude:48.2082, longitude:16.3738, costIndex:3.6, popularity:84, imageUrl:'https://images.unsplash.com/photo-1516550893923-42d28e5677af?w=800', description:'Imperial palaces and classical music' },
+    { name:'Santorini', country:'Greece', region:'Europe', latitude:36.3932, longitude:25.4615, costIndex:3.4, popularity:91, imageUrl:'https://images.unsplash.com/photo-1613395877344-13d4a8e0d49e?w=800', description:'Stunning sunsets and white-blue domes' },
+    { name:'Hanoi', country:'Vietnam', region:'Asia', latitude:21.0278, longitude:105.8342, costIndex:1.5, popularity:79, imageUrl:'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=800', description:'Ancient charm and pho' },
+    { name:'Kyoto', country:'Japan', region:'Asia', latitude:35.0116, longitude:135.7681, costIndex:3.9, popularity:88, imageUrl:'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=800', description:'Temples, bamboo, and geisha' },
+    { name:'Cancún', country:'Mexico', region:'North America', latitude:21.1619, longitude:-86.8515, costIndex:2.7, popularity:86, imageUrl:'https://images.unsplash.com/photo-1510097467424-192d713fd8b2?w=800', description:'Caribbean beaches and Mayan ruins' },
+    { name:'Zürich', country:'Switzerland', region:'Europe', latitude:47.3769, longitude:8.5417, costIndex:5.0, popularity:81, imageUrl:'https://images.unsplash.com/photo-1515488764276-beab7607c1e6?w=800', description:'Alpine scenery and chocolate' },
   ];
 
   const cities = [];
-  for (const data of cityData) {
-    const city = await prisma.city.create({ data });
-    cities.push(city);
-  }
+  for (const d of cityData) { cities.push(await prisma.city.create({ data: d })); }
   console.log(`Created ${cities.length} cities`);
 
-  // Create activities sequentially
-  const activityTemplates = [
-    { name: 'Walking Tour', category: 'sightseeing', costMin: 20, costMax: 50, durationHrs: 3 },
-    { name: 'Food Tour', category: 'food', costMin: 40, costMax: 80, durationHrs: 3 },
-    { name: 'Museum Visit', category: 'culture', costMin: 15, costMax: 30, durationHrs: 2 },
-    { name: 'Cooking Class', category: 'food', costMin: 50, costMax: 100, durationHrs: 4 },
-    { name: 'Adventure Tour', category: 'adventure', costMin: 80, costMax: 200, durationHrs: 4 },
+  // Activities: 5 per city = 125
+  const actTemplates = [
+    { name:'Walking Tour', cat:'sightseeing', cMin:20, cMax:50, dur:3 },
+    { name:'Food Tour', cat:'food', cMin:40, cMax:80, dur:3 },
+    { name:'Museum Visit', cat:'culture', cMin:15, cMax:30, dur:2 },
+    { name:'Cooking Class', cat:'food', cMin:50, cMax:100, dur:4 },
+    { name:'Adventure Tour', cat:'adventure', cMin:80, cMax:200, dur:4 },
   ];
-
-  let actCount = 0;
-  for (const city of cities) {
-    for (const t of activityTemplates) {
-      await prisma.activity.create({
-        data: {
-          cityId: city.id,
-          name: `${city.name} ${t.name}`,
-          category: t.category,
-          costMin: t.costMin,
-          costMax: t.costMax,
-          durationHrs: t.durationHrs,
-          rating: (3.5 + Math.random() * 1.5).toFixed(2),
-          isFeatured: Math.random() > 0.7,
-          description: `Best ${t.name.toLowerCase()} in ${city.name}`
-        }
-      });
-      actCount++;
+  let ac=0;
+  for (const c of cities) {
+    for (const t of actTemplates) {
+      await prisma.activity.create({ data:{
+        cityId:c.id, name:`${c.name} ${t.name}`, category:t.cat, costMin:t.cMin, costMax:t.cMax, durationHrs:t.dur,
+        rating: (3.5+Math.random()*1.5).toFixed(2), isFeatured: Math.random()>0.7,
+        description:`Best ${t.name.toLowerCase()} experience in ${c.name}`
+      }});
+      ac++;
     }
   }
-  console.log(`Created ${actCount} activities`);
+  console.log(`Created ${ac} activities`);
 
-  // Get cities for trips
-  const tokyo = cities.find(c => c.name === 'Tokyo');
-  const bali = cities.find(c => c.name === 'Bali');
-
-  // Create demo trips
+  // Trips
   const now = new Date();
-  const ongoingStart = new Date(now); ongoingStart.setDate(ongoingStart.getDate() - 3);
-  const ongoingEnd = new Date(now); ongoingEnd.setDate(ongoingEnd.getDate() + 4);
-  const completedStart = new Date(now); completedStart.setMonth(completedStart.getMonth() - 2);
-  const completedEnd = new Date(completedStart); completedEnd.setDate(completedEnd.getDate() + 10);
+  const d = (base, off) => { const x=new Date(base); x.setDate(x.getDate()+off); return x; };
+  const tokyo=cities.find(c=>c.name==='Tokyo'), bali=cities.find(c=>c.name==='Bali');
+  const paris=cities.find(c=>c.name==='Paris'), barcelona=cities.find(c=>c.name==='Barcelona'), rome=cities.find(c=>c.name==='Rome');
 
-  const trip1 = await prisma.trip.create({
-    data: {
-      userId: user1.id,
-      title: 'Japan Adventure',
-      description: 'Exploring Japan',
-      startDate: ongoingStart,
-      endDate: ongoingEnd,
-      status: 'ongoing',
-      isPublic: true,
-      totalBudget: 3000,
-      stops: { create: [{ cityId: tokyo.id, arrivalDate: ongoingStart, departureDate: ongoingEnd, orderIndex: 0 }] }
-    }
-  });
+  const trip1 = await prisma.trip.create({ data:{
+    userId:user1.id, title:'Japan Adventure', description:'Exploring the best of Japan - from ancient temples to futuristic cities.',
+    startDate:d(now,-3), endDate:d(now,4), status:'ongoing', isPublic:true, totalBudget:3000,
+    shareToken: crypto.randomBytes(16).toString('hex'),
+    stops:{ create:[{ cityId:tokyo.id, arrivalDate:d(now,-3), departureDate:d(now,4), orderIndex:0 }] }
+  }});
 
-  const trip2 = await prisma.trip.create({
-    data: {
-      userId: user2.id,
-      title: 'Bali Retreat',
-      description: 'Relaxing in Bali',
-      startDate: completedStart,
-      endDate: completedEnd,
-      status: 'completed',
-      isPublic: true,
-      totalBudget: 2000,
-      stops: { create: [{ cityId: bali.id, arrivalDate: completedStart, departureDate: completedEnd, orderIndex: 0 }] }
-    }
-  });
-  console.log('Created demo trips');
+  const trip2 = await prisma.trip.create({ data:{
+    userId:user2.id, title:'Bali Retreat', description:'Relaxing in paradise with yoga, surfing, and amazing food.',
+    startDate:d(now,-60), endDate:d(now,-50), status:'completed', isPublic:true, totalBudget:2000,
+    shareToken: crypto.randomBytes(16).toString('hex'),
+    stops:{ create:[{ cityId:bali.id, arrivalDate:d(now,-60), departureDate:d(now,-50), orderIndex:0 }] }
+  }});
 
-  // Add expenses
-  await prisma.expense.create({ data: { tripId: trip2.id, category: 'flight', description: 'Round trip', amount: 800, date: completedStart } });
-  await prisma.expense.create({ data: { tripId: trip2.id, category: 'hotel', description: 'Beach villa', amount: 600, date: completedStart } });
+  const trip3 = await prisma.trip.create({ data:{
+    userId:user3.id, title:'European Grand Tour', description:'Paris → Barcelona → Rome - the ultimate European experience.',
+    startDate:d(now,14), endDate:d(now,35), status:'planned', isPublic:true, totalBudget:5000,
+    shareToken: crypto.randomBytes(16).toString('hex'),
+    stops:{ create:[
+      { cityId:paris.id, arrivalDate:d(now,14), departureDate:d(now,21), orderIndex:0 },
+      { cityId:barcelona.id, arrivalDate:d(now,21), departureDate:d(now,28), orderIndex:1 },
+      { cityId:rome.id, arrivalDate:d(now,28), departureDate:d(now,35), orderIndex:2 },
+    ]}
+  }});
+  console.log('Created 3 demo trips');
+
+  // Expenses
+  await prisma.expense.createMany({ data:[
+    { tripId:trip2.id, category:'flight', description:'Round trip flights', amount:800, date:d(now,-60) },
+    { tripId:trip2.id, category:'hotel', description:'Beach villa 10 nights', amount:600, date:d(now,-60) },
+    { tripId:trip2.id, category:'food', description:'Local restaurants', amount:250, date:d(now,-58) },
+    { tripId:trip2.id, category:'activity', description:'Surf lessons', amount:80, date:d(now,-55) },
+    { tripId:trip2.id, category:'transport', description:'Scooter rental', amount:70, date:d(now,-59) },
+    { tripId:trip1.id, category:'flight', description:'Round trip to Tokyo', amount:1200, date:d(now,-3) },
+    { tripId:trip1.id, category:'hotel', description:'Shinjuku hotel', amount:500, date:d(now,-3) },
+    { tripId:trip1.id, category:'food', description:'Ramen, sushi, izakaya', amount:150, date:d(now,-2) },
+  ]});
   console.log('Added expenses');
 
-  // Add packing items
-  await prisma.packingItem.create({ data: { tripId: trip1.id, label: 'Passport', category: 'documents' } });
-  await prisma.packingItem.create({ data: { tripId: trip1.id, label: 'Phone', category: 'electronics' } });
+  // Packing items
+  const packItems = [
+    { tripId:trip1.id, label:'Passport', category:'documents' },
+    { tripId:trip1.id, label:'Phone charger', category:'electronics' },
+    { tripId:trip1.id, label:'JR Pass', category:'documents' },
+    { tripId:trip1.id, label:'Rain jacket', category:'clothing' },
+    { tripId:trip1.id, label:'Sunscreen', category:'toiletries' },
+    { tripId:trip3.id, label:'Passport', category:'documents' },
+    { tripId:trip3.id, label:'EU adapter', category:'electronics' },
+    { tripId:trip3.id, label:'Walking shoes', category:'clothing' },
+  ];
+  await prisma.packingItem.createMany({ data: packItems });
   console.log('Added packing items');
 
-  // Create community posts
-  await prisma.communityPost.create({ data: { userId: user2.id, tripId: trip2.id, content: 'Just got back from Bali! Amazing!', likesCount: 24 } });
-  await prisma.communityPost.create({ data: { userId: user1.id, content: 'Pro tip: Get a JR Pass for Japan!', likesCount: 45 } });
-  console.log('Created community posts');
+  // Community posts (10+)
+  const posts = await Promise.all([
+    prisma.communityPost.create({ data:{ userId:user2.id, tripId:trip2.id, content:'Just got back from Bali! The rice terraces in Ubud were absolutely magical. 🌾✨ Highly recommend staying at least 3 days there.', likesCount:24, tags:['bali','ubud','nature'] }}),
+    prisma.communityPost.create({ data:{ userId:user1.id, content:'Pro tip: Get a JR Pass before visiting Japan. It saves SO much money on bullet trains! 🚅', likesCount:45, tags:['japan','tips','budget'] }}),
+    prisma.communityPost.create({ data:{ userId:user3.id, content:'Planning my European grand tour! Any must-visit restaurants in Paris? 🇫🇷🍷', likesCount:12, tags:['paris','food','europe'] }}),
+    prisma.communityPost.create({ data:{ userId:user2.id, content:'Sunset at Tanah Lot temple was the most beautiful thing I\'ve ever seen. No filter needed! 🌅', likesCount:38, tags:['bali','sunset','temple'] }}),
+    prisma.communityPost.create({ data:{ userId:user1.id, tripId:trip1.id, content:'Day 2 in Tokyo: Visited Shibuya crossing, Harajuku, and had the BEST ramen in Shinjuku. This city is incredible! 🍜🏙️', likesCount:31, tags:['tokyo','food','japan'] }}),
+    prisma.communityPost.create({ data:{ userId:user3.id, content:'Best travel hack: Use Google Translate camera feature to read menus in any language. Game changer! 📱', likesCount:56, tags:['tips','hack','travel'] }}),
+    prisma.communityPost.create({ data:{ userId:user2.id, content:'Bali packing essentials: reef-safe sunscreen, mosquito repellent, light rain jacket, and a good book for the beach. 📚🏖️', likesCount:19, tags:['bali','packing','tips'] }}),
+    prisma.communityPost.create({ data:{ userId:user1.id, content:'Just discovered this hidden gem in Akihabara - a tiny retro game café with the best matcha latte. 🎮🍵', likesCount:27, tags:['tokyo','hidden-gem','food'] }}),
+    prisma.communityPost.create({ data:{ userId:user3.id, content:'Who else thinks Barcelona > Paris? The energy, the food, the architecture... La Sagrada Familia literally made me cry. 😭🏗️', likesCount:42, tags:['barcelona','architecture','debate'] }}),
+    prisma.communityPost.create({ data:{ userId:user2.id, content:'One month since Bali and I\'m already planning to go back. The people, the culture, the food... it changes you. 💚', likesCount:33, tags:['bali','reflection','travel'] }}),
+    prisma.communityPost.create({ data:{ userId:user1.id, content:'Budget breakdown for 7 days in Tokyo: Flights $1200, Hotel $500, Food $200, Activities $300, Transport $100. Total: ~$2300 for one person.', likesCount:67, tags:['tokyo','budget','breakdown'] }}),
+  ]);
+  console.log(`Created ${posts.length} community posts`);
 
-  console.log('Seeding completed!');
+  // Comments on posts
+  await prisma.postComment.createMany({ data:[
+    { postId:posts[0].id, userId:user1.id, content:'Ubud is amazing! Did you visit the Monkey Forest?' },
+    { postId:posts[0].id, userId:user3.id, content:'Adding this to my bucket list!' },
+    { postId:posts[1].id, userId:user2.id, content:'Yes! The 7-day JR Pass is the best value.' },
+    { postId:posts[1].id, userId:user3.id, content:'How far in advance should you buy it?' },
+    { postId:posts[2].id, userId:user1.id, content:'Le Comptoir du Panthéon is incredible and not too touristy.' },
+    { postId:posts[2].id, userId:user2.id, content:'Try the croissants at Du Pain et des Idées!' },
+    { postId:posts[4].id, userId:user2.id, content:'Which ramen shop? I need to know!' },
+    { postId:posts[4].id, userId:user3.id, content:'Shibuya crossing at night is a whole different vibe.' },
+    { postId:posts[5].id, userId:user1.id, content:'Also works for street signs! Saved me so many times.' },
+    { postId:posts[8].id, userId:user1.id, content:'Bold take but I respect it 😄' },
+    { postId:posts[8].id, userId:user2.id, content:'Barcelona food scene is definitely underrated.' },
+    { postId:posts[10].id, userId:user2.id, content:'This is so helpful! Was Tokyo expensive for food?' },
+    { postId:posts[10].id, userId:user3.id, content:'Saving this for my planning. Thanks!' },
+  ]});
+  console.log('Added comments');
+
+  // Saved destinations
+  const amsterdam=cities.find(c=>c.name==='Amsterdam'), santorini=cities.find(c=>c.name==='Santorini');
+  const singapore=cities.find(c=>c.name==='Singapore'), kyoto=cities.find(c=>c.name==='Kyoto');
+  await prisma.savedDestination.createMany({ data:[
+    { userId:user1.id, cityId:bali.id },{ userId:user1.id, cityId:paris.id },{ userId:user1.id, cityId:santorini.id },
+    { userId:user2.id, cityId:tokyo.id },{ userId:user2.id, cityId:kyoto.id },
+    { userId:user3.id, cityId:singapore.id },{ userId:user3.id, cityId:amsterdam.id },
+  ]});
+  console.log('Added saved destinations');
+
+  // Checklist templates
+  await prisma.checklistTemplate.createMany({ data:[
+    { name:'Beach Vacation', category:'vacation', items: JSON.stringify([
+      {label:'Swimsuit',cat:'clothing'},{label:'Sunscreen SPF 50+',cat:'toiletries'},{label:'Flip flops',cat:'clothing'},{label:'Beach towel',cat:'misc'},
+      {label:'Sunglasses',cat:'misc'},{label:'Hat',cat:'clothing'},{label:'Waterproof phone pouch',cat:'electronics'},{label:'Aloe vera gel',cat:'toiletries'},
+      {label:'Snorkel gear',cat:'misc'},{label:'Light cover-up',cat:'clothing'}
+    ])},
+    { name:'Business Trip', category:'business', items: JSON.stringify([
+      {label:'Laptop + charger',cat:'electronics'},{label:'Business cards',cat:'documents'},{label:'Dress shoes',cat:'clothing'},{label:'Blazer',cat:'clothing'},
+      {label:'Presentation materials',cat:'documents'},{label:'Portable WiFi',cat:'electronics'},{label:'Dress shirts',cat:'clothing'},{label:'Tie',cat:'clothing'},
+      {label:'Notebook + pen',cat:'misc'},{label:'Breath mints',cat:'toiletries'}
+    ])},
+    { name:'Backpacking', category:'adventure', items: JSON.stringify([
+      {label:'Backpack (40-60L)',cat:'misc'},{label:'Quick-dry towel',cat:'misc'},{label:'Headlamp',cat:'electronics'},{label:'Water bottle',cat:'misc'},
+      {label:'First aid kit',cat:'medication'},{label:'Padlock',cat:'misc'},{label:'Dry bags',cat:'misc'},{label:'Hiking boots',cat:'clothing'},
+      {label:'Rain poncho',cat:'clothing'},{label:'Multi-tool',cat:'misc'},{label:'Sleeping bag liner',cat:'misc'}
+    ])},
+    { name:'Winter Trip', category:'seasonal', items: JSON.stringify([
+      {label:'Winter coat',cat:'clothing'},{label:'Thermal underwear',cat:'clothing'},{label:'Gloves',cat:'clothing'},{label:'Beanie',cat:'clothing'},
+      {label:'Scarf',cat:'clothing'},{label:'Waterproof boots',cat:'clothing'},{label:'Hand warmers',cat:'misc'},{label:'Lip balm',cat:'toiletries'},
+      {label:'Moisturizer',cat:'toiletries'},{label:'Wool socks',cat:'clothing'}
+    ])},
+    { name:'Family Vacation', category:'family', items: JSON.stringify([
+      {label:'Kids snacks',cat:'misc'},{label:'Entertainment (tablet/books)',cat:'electronics'},{label:'Car seat (if needed)',cat:'misc'},
+      {label:'Baby wipes',cat:'toiletries'},{label:'First aid kit',cat:'medication'},{label:'Comfort toy/blanket',cat:'misc'},
+      {label:'Stroller',cat:'misc'},{label:'Swimwear for kids',cat:'clothing'},{label:'Sunscreen (kid-safe)',cat:'toiletries'},
+      {label:'Passports for all family',cat:'documents'}
+    ])},
+  ]});
+  console.log('Created checklist templates');
+
+  // Trip notes
+  await prisma.tripNote.createMany({ data:[
+    { tripId:trip1.id, title:'Arrival Notes', content:'Arrived at Narita. Got Suica card and took Narita Express to Shinjuku.', noteDate:d(now,-3) },
+    { tripId:trip1.id, title:'Best Ramen Spots', content:'1. Fuunji (tsukemen) near Shinjuku\n2. Ichiran Shibuya\n3. Afuri (yuzu shio) in Ebisu', noteDate:d(now,-2) },
+    { tripId:trip2.id, title:'Bali Highlights', content:'Top moments:\n- Sunrise at Mount Batur\n- Tegallalang Rice Terrace\n- Uluwatu sunset\n- Cooking class in Ubud', noteDate:d(now,-55) },
+  ]});
+  console.log('Added trip notes');
+
+  console.log('Seeding completed! ✅');
 }
 
 main()

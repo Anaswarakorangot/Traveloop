@@ -20,6 +20,7 @@ import Community from './pages/Community'
 import Checklist from './pages/Checklist'
 import Notes from './pages/Notes'
 import Expenses from './pages/Expenses'
+import Invoice from './pages/Invoice'
 import Admin from './pages/Admin'
 
 function PrivateRoute({ children }) {
@@ -60,6 +61,7 @@ export default function AppRouter() {
         <Route path="/trips/:id/checklist" element={<Checklist />} />
         <Route path="/trips/:id/notes" element={<Notes />} />
         <Route path="/trips/:id/expenses" element={<Expenses />} />
+        <Route path="/trips/:id/invoice" element={<Invoice />} />
         <Route path="/explore" element={<Explore />} />
         <Route path="/community" element={<Community />} />
         <Route path="/profile" element={<Profile />} />

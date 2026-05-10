@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { Calendar, MapPin, DollarSign, Edit, Clipboard, FileText, Receipt } from 'lucide-react'
+import { Calendar, MapPin, DollarSign, Edit, Clipboard, FileText, Receipt, Share2, FileDown } from 'lucide-react'
 import { Card, CardTitle, CardContent } from '../components/common/Card'
 import { Button } from '../components/common/Button'
 import { Badge } from '../components/common/Badge'
 import { Skeleton } from '../components/common/Skeleton'
+import { toast } from '../components/common/Toast'
 import { useTripStore } from '../store/tripStore'
+import { tripsApi } from '../api/trips'
 import { format, differenceInDays } from 'date-fns'
 
 export default function TripDetail() {
@@ -77,6 +79,21 @@ export default function TripDetail() {
             <Receipt size={16} /> Expenses
           </Button>
         </Link>
+        <Link to={`/trips/${id}/invoice`}>
+          <Button variant="ghost" className="gap-2">
+            <FileDown size={16} /> Invoice
+          </Button>
+        </Link>
+        <Button variant="ghost" className="gap-2" onClick={async () => {
+          try {
+            const { data } = await tripsApi.shareTrip(id)
+            const url = `${window.location.origin}/trips/${id}`
+            await navigator.clipboard.writeText(url)
+            toast.success('Share link copied!')
+          } catch { toast.error('Failed to share') }
+        }}>
+          <Share2 size={16} /> Share
+        </Button>
       </div>
 
       {/* Stats */}

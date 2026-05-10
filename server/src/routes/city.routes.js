@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import prisma from '../config/db.js';
 import { authenticate } from '../middleware/auth.js';
+import { getCache, setCache } from '../config/redis.js';
 
 const router = Router();
 
@@ -30,12 +31,17 @@ router.get('/', async (req, res, next) => {
 router.get('/popular', async (req, res, next) => {
   try {
     const { limit = 10 } = req.query;
+    const cacheKey = `cities:popular:${limit}`;
+    
+    const cached = await getCache(cacheKey);
+    if (cached) return res.json(cached);
 
     const cities = await prisma.city.findMany({
       orderBy: { popularity: 'desc' },
       take: parseInt(limit)
     });
 
+    await setCache(cacheKey, cities, 3600); // cache for 1 hour
     res.json(cities);
   } catch (error) {
     next(error);

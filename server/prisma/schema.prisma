@@ -50,20 +50,22 @@ enum PackingCategory {
 }
 
 model User {
-  id            String    @id @default(uuid())
-  firstName     String    @map("first_name") @db.VarChar(100)
-  lastName      String    @map("last_name") @db.VarChar(100)
-  email         String    @unique @db.VarChar(255)
-  passwordHash  String    @map("password_hash") @db.VarChar(255)
-  phone         String?   @db.VarChar(20)
-  city          String?   @db.VarChar(100)
-  country       String?   @db.VarChar(100)
-  bio           String?
-  avatarUrl     String?   @map("avatar_url")
-  role          UserRole  @default(user)
-  isActive      Boolean   @default(true) @map("is_active")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id              String    @id @default(uuid())
+  firstName       String    @map("first_name") @db.VarChar(100)
+  lastName        String    @map("last_name") @db.VarChar(100)
+  email           String    @unique @db.VarChar(255)
+  passwordHash    String    @map("password_hash") @db.VarChar(255)
+  phone           String?   @db.VarChar(20)
+  city            String?   @db.VarChar(100)
+  country         String?   @db.VarChar(100)
+  bio             String?
+  avatarUrl       String?   @map("avatar_url")
+  role            UserRole  @default(user)
+  isActive        Boolean   @default(true) @map("is_active")
+  isPublicProfile Boolean   @default(true) @map("is_public_profile")
+  deletedAt       DateTime? @map("deleted_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
   trips              Trip[]
   communityPosts     CommunityPost[]
@@ -86,6 +88,7 @@ model Trip {
   isPublic      Boolean    @default(false) @map("is_public")
   totalBudget   Decimal    @default(0) @map("total_budget") @db.Decimal(12, 2)
   currency      String     @default("USD") @db.VarChar(10)
+  shareToken    String?    @unique @map("share_token") @db.VarChar(64)
   createdAt     DateTime   @default(now()) @map("created_at")
   updatedAt     DateTime   @updatedAt @map("updated_at")
 
@@ -98,6 +101,7 @@ model Trip {
 
   @@index([userId])
   @@index([status])
+  @@index([shareToken])
   @@map("trips")
 }
 
@@ -172,6 +176,7 @@ model ItineraryItem {
   cost        Decimal   @default(0) @db.Decimal(10, 2)
   notes       String?
   orderIndex  Int?      @map("order_index")
+  sectionType String?   @map("section_type") @db.VarChar(20)
   createdAt   DateTime  @default(now()) @map("created_at")
 
   stop     TripStop  @relation(fields: [stopId], references: [id], onDelete: Cascade)
@@ -235,6 +240,7 @@ model CommunityPost {
   userId     String   @map("user_id")
   content    String
   imageUrl   String?  @map("image_url")
+  tags       String[] @default([])
   likesCount Int      @default(0) @map("likes_count")
   createdAt  DateTime @default(now()) @map("created_at")
 
@@ -281,4 +287,14 @@ model SavedDestination {
 
   @@id([userId, cityId])
   @@map("saved_destinations")
+}
+
+model ChecklistTemplate {
+  id        String   @id @default(uuid())
+  name      String   @db.VarChar(100)
+  category  String   @db.VarChar(50)
+  items     Json
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("checklist_templates")
 }

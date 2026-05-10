@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import crypto from 'crypto';
 import prisma from '../config/db.js';
 import { authenticate, optionalAuth } from '../middleware/auth.js';
 
@@ -636,6 +637,110 @@ router.get('/:id/budget', authenticate, async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+});
+
+// Daily budget breakdown
+router.get('/:id/budget/daily', authenticate, async (req, res, next) => {
+  try {
+    const trip = await prisma.trip.findUnique({
+      where: { id: req.params.id },
+      select: { totalBudget: true, startDate: true, endDate: true, currency: true }
+    });
+    if (!trip) return res.status(404).json({ error: 'Trip not found' });
+
+    const expenses = await prisma.expense.findMany({
+      where: { tripId: req.params.id },
+      orderBy: { date: 'asc' }
+    });
+
+    // Group by date
+    const byDate = {};
+    expenses.forEach(e => {
+      const key = e.date ? e.date.toISOString().split('T')[0] : 'unassigned';
+      if (!byDate[key]) byDate[key] = { date: key, items: [], total: 0 };
+      byDate[key].items.push(e);
+      byDate[key].total += Number(e.amount);
+    });
+
+    res.json({ dailyBreakdown: Object.values(byDate), totalBudget: trip.totalBudget, currency: trip.currency });
+  } catch (error) { next(error); }
+});
+
+// Expense summary (for invoice)
+router.get('/:id/expense-summary', authenticate, async (req, res, next) => {
+  try {
+    const trip = await prisma.trip.findUnique({
+      where: { id: req.params.id },
+      select: { title: true, totalBudget: true, currency: true, startDate: true, endDate: true,
+        user: { select: { firstName: true, lastName: true, email: true } } }
+    });
+    if (!trip) return res.status(404).json({ error: 'Trip not found' });
+
+    const [expenses, byCategory] = await Promise.all([
+      prisma.expense.findMany({ where: { tripId: req.params.id }, orderBy: { date: 'asc' },
+        include: { stop: { include: { city: { select: { name: true } } } } }
+      }),
+      prisma.expense.groupBy({ by: ['category'], where: { tripId: req.params.id }, _sum: { amount: true } })
+    ]);
+
+    const total = expenses.reduce((s, e) => s + Number(e.amount), 0);
+
+    res.json({
+      trip: { title: trip.title, startDate: trip.startDate, endDate: trip.endDate, budget: trip.totalBudget, currency: trip.currency },
+      user: trip.user,
+      expenses,
+      byCategory: byCategory.map(c => ({ category: c.category, total: Number(c._sum.amount) })),
+      total,
+      remaining: Number(trip.totalBudget) - total
+    });
+  } catch (error) { next(error); }
+});
+
+// Share trip (generate token)
+router.post('/:id/share', authenticate, async (req, res, next) => {
+  try {
+    const trip = await prisma.trip.findUnique({ where: { id: req.params.id } });
+    if (!trip || trip.userId !== req.user.id) return res.status(403).json({ error: 'Not authorized' });
+
+    const shareToken = trip.shareToken || crypto.randomBytes(16).toString('hex');
+    await prisma.trip.update({ where: { id: req.params.id }, data: { shareToken, isPublic: true } });
+
+    res.json({ shareToken, shareUrl: `/trips/shared/${shareToken}` });
+  } catch (error) { next(error); }
+});
+
+// Get shared trip
+router.get('/shared/:token', async (req, res, next) => {
+  try {
+    const trip = await prisma.trip.findUnique({
+      where: { shareToken: req.params.token },
+      include: {
+        user: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
+        stops: { include: { city: true, itineraryItems: { include: { activity: true }, orderBy: [{ date: 'asc' }, { orderIndex: 'asc' }] } }, orderBy: { orderIndex: 'asc' } },
+        expenses: true, packingItems: true, notes: { orderBy: { createdAt: 'desc' } }
+      }
+    });
+    if (!trip) return res.status(404).json({ error: 'Trip not found' });
+    res.json(trip);
+  } catch (error) { next(error); }
+});
+
+// Export trip data (JSON)
+router.get('/:id/export', authenticate, async (req, res, next) => {
+  try {
+    const trip = await prisma.trip.findUnique({
+      where: { id: req.params.id },
+      include: {
+        stops: { include: { city: true, itineraryItems: { include: { activity: true } } } },
+        expenses: true, packingItems: true, notes: true
+      }
+    });
+    if (!trip || (trip.userId !== req.user.id && req.user.role !== 'admin')) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+    res.setHeader('Content-Disposition', `attachment; filename="${trip.title.replace(/[^a-zA-Z0-9]/g, '_')}_export.json"`);
+    res.json(trip);
+  } catch (error) { next(error); }
 });
 
 export default router;
