@@ -22,6 +22,7 @@ export default function CreateTrip() {
   const [aiSuggestions, setAiSuggestions] = useState(null)
   const [isEstimating, setIsEstimating] = useState(false)
   const [isAiLoading, setIsAiLoading] = useState(false)
+  const [lockedCity, setLockedCity] = useState(null)
   const [form, setForm] = useState({
     title: '', startDate: '', endDate: '', totalBudget: '',
     stops: [], // { city, arrivalDate, departureDate }
@@ -38,10 +39,17 @@ export default function CreateTrip() {
       citiesApi.getById(cityId).then(res => {
         const city = res.data
         if (city) {
+          setLockedCity(city)
           setForm(f => ({
             ...f,
+            title: `Trip to ${city.name}`,
             stops: [{ city, arrivalDate: f.startDate, departureDate: f.endDate }]
           }))
+          // Auto fetch AI suggestions to customize experience
+          setIsAiLoading(true)
+          aiApi.suggestItinerary({ cityId: city.id, days: 3 }).then(aiRes => {
+            setAiSuggestions(aiRes.data)
+          }).catch(() => {}).finally(() => setIsAiLoading(false))
         }
       }).catch(err => console.error("Failed to load pre-selected city", err))
     }
@@ -139,7 +147,18 @@ export default function CreateTrip() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="font-display text-2xl font-bold text-white mb-6">Create New Trip</h1>
+      {lockedCity ? (
+        <div className="mb-6 relative rounded-xl overflow-hidden h-40 flex items-end p-6 shadow-xl">
+          <img src={lockedCity.imageUrl} alt={lockedCity.name} className="absolute inset-0 w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+          <div className="relative z-10">
+            <h1 className="font-display text-3xl font-bold text-white shadow-sm">Plan your trip to {lockedCity.name}</h1>
+            <p className="text-white/90 font-medium">{lockedCity.country}</p>
+          </div>
+        </div>
+      ) : (
+        <h1 className="font-display text-2xl font-bold text-white mb-6">Create New Trip</h1>
+      )}
 
       <Card>
         <CardContent>
@@ -165,44 +184,48 @@ export default function CreateTrip() {
                         <p className="text-xs text-muted">{stop.city.country}</p>
                       </div>
                       <Badge variant="default">#{idx + 1}</Badge>
-                      <button type="button" onClick={() => removeCity(idx)} className="text-muted hover:text-danger"><X size={16} /></button>
+                      {!lockedCity && <button type="button" onClick={() => removeCity(idx)} className="text-muted hover:text-danger"><X size={16} /></button>}
                     </div>
                   ))}
                 </div>
               )}
               {/* Search */}
-              <div className="relative">
-                <input type="text" placeholder="Search and add cities..." value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-surface border border-border rounded-lg text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary" />
-                {searchResults.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-surface border border-border rounded-lg shadow-xl max-h-48 overflow-y-auto">
-                    {searchResults.map(city => (
-                      <button key={city.id} type="button" onClick={() => addCity(city)}
-                        className="w-full px-4 py-2 text-left hover:bg-dark text-white flex items-center gap-3">
-                        <img src={city.imageUrl} alt="" className="w-8 h-8 rounded object-cover" />
-                        <span>{city.name}, {city.country}</span>
-                        {city.costIndex && <span className="text-xs text-muted ml-auto">{'$'.repeat(Math.round(Number(city.costIndex)))}</span>}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              {!lockedCity && (
+                <div className="relative mt-3">
+                  <input type="text" placeholder="Search and add cities..." value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-surface border border-border rounded-lg text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary" />
+                  {searchResults.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-surface border border-border rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                      {searchResults.map(city => (
+                        <button key={city.id} type="button" onClick={() => addCity(city)}
+                          className="w-full px-4 py-2 text-left hover:bg-dark text-white flex items-center gap-3">
+                          <img src={city.imageUrl} alt="" className="w-8 h-8 rounded object-cover" />
+                          <span>{city.name}, {city.country}</span>
+                          {city.costIndex && <span className="text-xs text-muted ml-auto">{'$'.repeat(Math.round(Number(city.costIndex)))}</span>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               {errors.city && <p className="text-sm text-danger mt-1">{errors.city}</p>}
             </div>
 
             {/* Quick suggestions */}
-            <div>
-              <p className="text-sm text-muted mb-2">Quick picks</p>
-              <div className="flex flex-wrap gap-2">
-                {suggestions.slice(0, 8).map(city => (
-                  <button key={city.id} type="button" onClick={() => addCity(city)}
-                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${form.stops.find(s => s.city.id === city.id) ? 'bg-primary text-white' : 'bg-surface text-muted hover:text-white border border-border hover:border-primary'}`}>
-                    {city.name}
-                  </button>
-                ))}
+            {!lockedCity && (
+              <div>
+                <p className="text-sm text-muted mb-2">Quick picks</p>
+                <div className="flex flex-wrap gap-2">
+                  {suggestions.slice(0, 8).map(city => (
+                    <button key={city.id} type="button" onClick={() => addCity(city)}
+                      className={`px-3 py-1.5 rounded-full text-sm transition-colors ${form.stops.find(s => s.city.id === city.id) ? 'bg-primary text-white' : 'bg-surface text-muted hover:text-white border border-border hover:border-primary'}`}>
+                      {city.name}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Dates */}
             <div className="grid grid-cols-2 gap-4">

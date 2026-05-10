@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Plus, Trash2, GripVertical, Save, Upload, AlertTriangle, Sun, Sunset, Moon } from 'lucide-react'
+import { Plus, Trash2, GripVertical, Save, Upload, AlertTriangle, Sun, Sunset, Moon, Plane } from 'lucide-react'
 import { Card, CardTitle, CardContent } from '../components/common/Card'
 import { Input } from '../components/common/Input'
 import { Button } from '../components/common/Button'
@@ -15,6 +15,7 @@ const SECTION_TYPES = [
   { value: 'morning', label: 'Morning', icon: Sun, color: 'text-amber-400' },
   { value: 'afternoon', label: 'Afternoon', icon: Sunset, color: 'text-orange-400' },
   { value: 'evening', label: 'Evening', icon: Moon, color: 'text-indigo-400' },
+  { value: 'transit', label: 'Transit / Flight', icon: Plane, color: 'text-sky-400' },
 ]
 
 export default function BuildItinerary() {
