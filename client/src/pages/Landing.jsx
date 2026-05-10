@@ -19,8 +19,8 @@ export default function Landing() {
 
   return (
     <div className="w-full bg-slate-950 text-white overflow-hidden">
-      {/* SECTION 1: Gallery Section */}
-      <section className="min-h-screen bg-gradient-to-b from-teal-900 via-slate-800 to-slate-900 pt-20 pb-16 px-6 lg:px-12">
+      {/* SECTION 1: Hero Section with Voyare */}
+      <section id="hero-section" className="min-h-screen bg-gradient-to-b from-teal-800 via-teal-700 to-slate-800 pt-20 pb-20 px-6 lg:px-12 relative overflow-hidden">
         <div className={`max-w-7xl mx-auto transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
           {/* Header */}
           <div className="mb-16">
