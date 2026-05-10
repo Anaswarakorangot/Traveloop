@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Card, CardTitle, CardContent } from '../components/common/Card'
 import { Input } from '../components/common/Input'
 import { Button } from '../components/common/Button'
@@ -13,6 +13,7 @@ import { differenceInDays } from 'date-fns'
 
 export default function CreateTrip() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { createTrip, isLoading } = useTripStore()
   const [suggestions, setSuggestions] = useState([])
   const [searchResults, setSearchResults] = useState([])
@@ -29,6 +30,22 @@ export default function CreateTrip() {
   const [errors, setErrors] = useState({})
 
   useEffect(() => { citiesApi.getSuggestions(9).then(res => setSuggestions(res.data)) }, [])
+
+  // Handle pre-filled city from URL
+  useEffect(() => {
+    const cityId = searchParams.get('cityId')
+    if (cityId) {
+      citiesApi.getById(cityId).then(res => {
+        const city = res.data
+        if (city) {
+          setForm(f => ({
+            ...f,
+            stops: [{ city, arrivalDate: f.startDate, departureDate: f.endDate }]
+          }))
+        }
+      }).catch(err => console.error("Failed to load pre-selected city", err))
+    }
+  }, [searchParams])
 
   useEffect(() => {
     if (searchQuery.length >= 2) {

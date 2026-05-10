@@ -147,7 +147,12 @@ export default function Explore() {
                         <p className="text-white/70 text-xs">{city.country}</p>
                       </div>
                     </div>
-                    <button onClick={() => toggleSave(city.id)} className="absolute top-2 right-2 p-1.5 bg-black/30 rounded-full hover:bg-black/50 transition-colors">
+                    <Link to={`/trips/new?cityId=${city.id}`} className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px] z-10">
+                      <div className="px-4 py-2 bg-primary text-white rounded-full font-medium transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 shadow-lg">
+                        Plan a Trip
+                      </div>
+                    </Link>
+                    <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleSave(city.id); }} className="absolute top-2 right-2 p-1.5 bg-black/30 rounded-full hover:bg-black/50 transition-colors z-20">
                       <Heart size={16} className={savedIds.has(city.id) ? 'text-danger fill-danger' : 'text-white'} />
                     </button>
                     {city.description && <p className="text-sm text-muted line-clamp-2">{city.description}</p>}
@@ -215,8 +220,13 @@ export default function Explore() {
                     <p className="text-white font-bold text-lg">{city.name}</p>
                     <p className="text-white/70 text-sm">{city.country}</p>
                   </div>
+                  <Link to={`/trips/new?cityId=${city.id}`} className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px] z-10">
+                    <div className="px-5 py-2.5 bg-primary text-white rounded-full font-medium transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 shadow-xl">
+                      Plan a Trip
+                    </div>
+                  </Link>
                 </div>
-                <button onClick={() => toggleSave(city.id)} className="absolute top-3 right-3 p-2 bg-black/30 rounded-full hover:bg-black/50 transition-colors">
+                <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleSave(city.id); }} className="absolute top-3 right-3 p-2 bg-black/40 rounded-full hover:bg-black/60 transition-colors z-20">
                   <Heart size={18} className={savedIds.has(city.id) ? 'text-danger fill-danger' : 'text-white'} />
                 </button>
                 {city.description && <p className="text-sm text-muted line-clamp-2">{city.description}</p>}
