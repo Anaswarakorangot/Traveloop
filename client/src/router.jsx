@@ -1,0 +1,76 @@
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { useAuthStore } from './store/authStore'
+
+// Layouts
+import MainLayout from './components/layout/MainLayout'
+import AuthLayout from './components/layout/AuthLayout'
+
+// Pages
+import Login from './pages/Login'
+import Register from './pages/Register'
+import Dashboard from './pages/Dashboard'
+import CreateTrip from './pages/CreateTrip'
+import BuildItinerary from './pages/BuildItinerary'
+import TripList from './pages/TripList'
+import TripDetail from './pages/TripDetail'
+import Profile from './pages/Profile'
+import Explore from './pages/Explore'
+import Community from './pages/Community'
+import Checklist from './pages/Checklist'
+import Notes from './pages/Notes'
+import Expenses from './pages/Expenses'
+import Admin from './pages/Admin'
+
+function PrivateRoute({ children }) {
+  const { isAuthenticated } = useAuthStore()
+  return isAuthenticated ? children : <Navigate to="/login" />
+}
+
+function AdminRoute({ children }) {
+  const { user, isAuthenticated } = useAuthStore()
+  if (!isAuthenticated) return <Navigate to="/login" />
+  if (user?.role !== 'admin') return <Navigate to="/dashboard" />
+  return children
+}
+
+function PublicRoute({ children }) {
+  const { isAuthenticated } = useAuthStore()
+  return isAuthenticated ? <Navigate to="/dashboard" /> : children
+}
+
+export default function AppRouter() {
+  return (
+    <Routes>
+      {/* Public routes */}
+      <Route element={<AuthLayout />}>
+        <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+        <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+      </Route>
+
+      {/* Protected routes */}
+      <Route element={<PrivateRoute><MainLayout /></PrivateRoute>}>
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/trips" element={<TripList />} />
+        <Route path="/trips/new" element={<CreateTrip />} />
+        <Route path="/trips/:id" element={<TripDetail />} />
+        <Route path="/trips/:id/build" element={<BuildItinerary />} />
+        <Route path="/trips/:id/itinerary" element={<TripDetail />} />
+        <Route path="/trips/:id/checklist" element={<Checklist />} />
+        <Route path="/trips/:id/notes" element={<Notes />} />
+        <Route path="/trips/:id/expenses" element={<Expenses />} />
+        <Route path="/explore" element={<Explore />} />
+        <Route path="/community" element={<Community />} />
+        <Route path="/profile" element={<Profile />} />
+      </Route>
+
+      {/* Admin routes */}
+      <Route element={<AdminRoute><MainLayout /></AdminRoute>}>
+        <Route path="/admin" element={<Admin />} />
+      </Route>
+
+      {/* Redirect */}
+      <Route path="/" element={<Navigate to="/dashboard" />} />
+      <Route path="*" element={<Navigate to="/dashboard" />} />
+    </Routes>
+  )
+}

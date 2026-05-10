@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --radius: 12px;
+  --color-primary: #1A6B4A;
+  --color-primary-lt: #2ECC71;
+  --color-secondary: #F4A623;
+  --color-dark: #1C1C2E;
+  --color-surface: #252540;
+  --color-border: #3A3A5C;
+  --color-text: #F0F0F8;
+  --color-text-muted: #8888AA;
+  --color-danger: #E74C3C;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'DM Sans', sans-serif;
+  background-color: var(--color-dark);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Syne', sans-serif;
+}
+
+@layer base {
+  :root {
+    --background: 222 47% 11%;
+    --foreground: 240 20% 97%;
+    --card: 234 30% 20%;
+    --card-foreground: 240 20% 97%;
+    --popover: 234 30% 20%;
+    --popover-foreground: 240 20% 97%;
+    --primary: 152 61% 26%;
+    --primary-foreground: 240 20% 97%;
+    --secondary: 38 90% 55%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 237 20% 40%;
+    --muted-foreground: 240 10% 60%;
+    --accent: 152 61% 50%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 240 20% 97%;
+    --border: 237 25% 30%;
+    --input: 237 25% 30%;
+    --ring: 152 61% 26%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-dark text-foreground;
+  }
+}
+
+.skeleton {
+  @apply animate-pulse bg-surface rounded;
+}
