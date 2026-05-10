@@ -11,7 +11,7 @@ const client = axios.create({
 
 // Request interceptor to add auth token
 client.interceptors.request.use((config) => {
-  const token = localStorage.getItem('accessToken')
+  const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -28,14 +28,15 @@ client.interceptors.response.use(
       originalRequest._retry = true
 
       try {
-        const refreshToken = localStorage.getItem('refreshToken')
+        const refreshToken = localStorage.getItem('refreshToken') || sessionStorage.getItem('refreshToken')
         if (refreshToken) {
           const { data } = await axios.post(`${API_BASE_URL}/auth/refresh-token`, {
             refreshToken,
           })
 
-          localStorage.setItem('accessToken', data.accessToken)
-          localStorage.setItem('refreshToken', data.refreshToken)
+          const storage = localStorage.getItem('rememberMe') ? localStorage : sessionStorage
+          storage.setItem('accessToken', data.accessToken)
+          storage.setItem('refreshToken', data.refreshToken)
 
           originalRequest.headers.Authorization = `Bearer ${data.accessToken}`
           return client(originalRequest)
@@ -43,6 +44,8 @@ client.interceptors.response.use(
       } catch (refreshError) {
         localStorage.removeItem('accessToken')
         localStorage.removeItem('refreshToken')
+        sessionStorage.removeItem('accessToken')
+        sessionStorage.removeItem('refreshToken')
         window.location.href = '/login'
       }
     }

@@ -8,6 +8,7 @@ import AuthLayout from './components/layout/AuthLayout'
 // Pages
 import Login from './pages/Login'
 import Register from './pages/Register'
+import ForgotPassword from './pages/ForgotPassword'
 import Dashboard from './pages/Dashboard'
 import CreateTrip from './pages/CreateTrip'
 import BuildItinerary from './pages/BuildItinerary'
@@ -45,6 +46,7 @@ export default function AppRouter() {
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
         <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+        <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
       </Route>
 
       {/* Protected routes */}

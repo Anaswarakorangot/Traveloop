@@ -1,13 +1,40 @@
 import { create } from 'zustand'
 import { authApi } from '../api/auth'
 
+/**
+ * Helper: read token from either storage layer.
+ */
+function getToken(key) {
+  return localStorage.getItem(key) || sessionStorage.getItem(key)
+}
+
+function clearTokens() {
+  localStorage.removeItem('accessToken')
+  localStorage.removeItem('refreshToken')
+  sessionStorage.removeItem('accessToken')
+  sessionStorage.removeItem('refreshToken')
+}
+
+function storeTokens(tokens, remember) {
+  const storage = remember ? localStorage : sessionStorage
+  storage.setItem('accessToken', tokens.accessToken)
+  storage.setItem('refreshToken', tokens.refreshToken)
+
+  // Also keep the preference itself in localStorage so we know on refresh
+  if (remember) {
+    localStorage.setItem('rememberMe', 'true')
+  } else {
+    localStorage.removeItem('rememberMe')
+  }
+}
+
 export const useAuthStore = create((set, get) => ({
   user: null,
   isAuthenticated: false,
   isLoading: true,
 
   initialize: async () => {
-    const token = localStorage.getItem('accessToken')
+    const token = getToken('accessToken')
     if (!token) {
       set({ isLoading: false })
       return
@@ -17,31 +44,27 @@ export const useAuthStore = create((set, get) => ({
       const { data } = await authApi.getMe()
       set({ user: data, isAuthenticated: true, isLoading: false })
     } catch (error) {
-      localStorage.removeItem('accessToken')
-      localStorage.removeItem('refreshToken')
+      clearTokens()
       set({ user: null, isAuthenticated: false, isLoading: false })
     }
   },
 
-  login: async (email, password) => {
-    const { data } = await authApi.login({ email, password })
-    localStorage.setItem('accessToken', data.accessToken)
-    localStorage.setItem('refreshToken', data.refreshToken)
+  login: async (email, password, captchaAnswer, rememberMe = false) => {
+    const { data } = await authApi.login({ email, password, captchaAnswer })
+    storeTokens(data, rememberMe)
     set({ user: data.user, isAuthenticated: true })
     return data.user
   },
 
   register: async (userData) => {
     const { data } = await authApi.register(userData)
-    localStorage.setItem('accessToken', data.accessToken)
-    localStorage.setItem('refreshToken', data.refreshToken)
+    storeTokens(data, true) // default to persist on registration
     set({ user: data.user, isAuthenticated: true })
     return data.user
   },
 
   logout: () => {
-    localStorage.removeItem('accessToken')
-    localStorage.removeItem('refreshToken')
+    clearTokens()
     set({ user: null, isAuthenticated: false })
   },
 

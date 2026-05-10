@@ -1,12 +1,29 @@
 import { Router } from 'express';
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import prisma from '../config/db.js';
 import { generateTokens, verifyRefreshToken } from '../utils/jwt.js';
 import { authenticate } from '../middleware/auth.js';
+import {
+  checkLoginStatus,
+  verifyCaptcha,
+  recordFailedAttempt,
+  clearAttempts,
+} from '../utils/loginLimiter.js';
+import { sendPasswordResetEmail } from '../utils/email.js';
 
 const router = Router();
 
-// Register
+// ─── In-memory password-reset store ──────────────────────────────────────────
+// Maps email → { code, expiresAt }
+const resetCodes = new Map();
+const RESET_CODE_EXPIRY_MS = 15 * 60 * 1000; // 15 minutes
+
+function generateResetCode() {
+  return crypto.randomInt(100000, 999999).toString();
+}
+
+// ─── Register ────────────────────────────────────────────────────────────────
 router.post('/register', async (req, res, next) => {
   try {
     const { email, password, firstName, lastName, phone, city, country, bio } = req.body;
@@ -51,15 +68,54 @@ router.post('/register', async (req, res, next) => {
   }
 });
 
-// Login
+// ─── Pre-login check (returns lockout status & captcha if needed) ────────────
+router.post('/login/check', (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email required' });
+
+  const status = checkLoginStatus(email);
+  res.json(status);
+});
+
+// ─── Login (with lockout + captcha verification) ─────────────────────────────
 router.post('/login', async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, captchaAnswer } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password required' });
     }
 
+    // 1. Check lockout
+    const status = checkLoginStatus(email);
+    if (status.locked) {
+      return res.status(429).json({
+        error: `Account temporarily locked. Try again in ${Math.ceil(status.remaining / 60)} minute(s).`,
+        locked: true,
+        remaining: status.remaining,
+      });
+    }
+
+    // 2. Verify CAPTCHA if required
+    if (status.requiresCaptcha) {
+      if (captchaAnswer === undefined || captchaAnswer === null || captchaAnswer === '') {
+        // Re-generate and return the captcha question so the client can display it
+        return res.status(400).json({
+          error: 'Please solve the CAPTCHA to continue.',
+          requiresCaptcha: true,
+          captchaQuestion: status.captchaQuestion,
+        });
+      }
+      if (!verifyCaptcha(email, captchaAnswer)) {
+        const afterFail = recordFailedAttempt(email);
+        return res.status(400).json({
+          error: 'Incorrect CAPTCHA answer. Please try again.',
+          ...afterFail,
+        });
+      }
+    }
+
+    // 3. Authenticate
     const user = await prisma.user.findUnique({
       where: { email },
       select: {
@@ -75,16 +131,26 @@ router.post('/login', async (req, res, next) => {
     });
 
     if (!user || !user.isActive) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      const afterFail = recordFailedAttempt(email);
+      return res.status(401).json({
+        error: 'Invalid credentials',
+        ...afterFail,
+      });
     }
 
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      const afterFail = recordFailedAttempt(email);
+      return res.status(401).json({
+        error: 'Invalid credentials',
+        ...afterFail,
+      });
     }
 
-    const tokens = generateTokens(user.id);
+    // Success – clear attempt history
+    clearAttempts(email);
 
+    const tokens = generateTokens(user.id);
     const { passwordHash, ...userData } = user;
     res.json({ user: userData, ...tokens });
   } catch (error) {
@@ -92,7 +158,93 @@ router.post('/login', async (req, res, next) => {
   }
 });
 
-// Refresh token
+// ─── Forgot Password – request reset code ────────────────────────────────────
+router.post('/forgot-password', async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    // Always respond with the same message to prevent email enumeration
+    const successMsg = { message: 'If that email is registered, you will receive a reset code shortly.' };
+
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true, isActive: true },
+    });
+
+    if (!user || !user.isActive) {
+      return res.json(successMsg);
+    }
+
+    const code = generateResetCode();
+    resetCodes.set(email.toLowerCase(), {
+      code,
+      expiresAt: Date.now() + RESET_CODE_EXPIRY_MS,
+    });
+
+    await sendPasswordResetEmail(email, code);
+
+    res.json(successMsg);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ─── Forgot Password – verify code ──────────────────────────────────────────
+router.post('/forgot-password/verify', (req, res) => {
+  const { email, code } = req.body;
+
+  if (!email || !code) {
+    return res.status(400).json({ error: 'Email and code are required' });
+  }
+
+  const record = resetCodes.get(email.toLowerCase());
+
+  if (!record || record.code !== code || Date.now() > record.expiresAt) {
+    return res.status(400).json({ error: 'Invalid or expired code' });
+  }
+
+  res.json({ valid: true });
+});
+
+// ─── Forgot Password – reset with new password ──────────────────────────────
+router.post('/forgot-password/reset', async (req, res, next) => {
+  try {
+    const { email, code, newPassword } = req.body;
+
+    if (!email || !code || !newPassword) {
+      return res.status(400).json({ error: 'Email, code, and new password are required' });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+
+    const record = resetCodes.get(email.toLowerCase());
+    if (!record || record.code !== code || Date.now() > record.expiresAt) {
+      return res.status(400).json({ error: 'Invalid or expired code' });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+
+    await prisma.user.update({
+      where: { email },
+      data: { passwordHash },
+    });
+
+    // Clean up
+    resetCodes.delete(email.toLowerCase());
+
+    res.json({ message: 'Password has been reset successfully.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ─── Refresh token ───────────────────────────────────────────────────────────
 router.post('/refresh-token', async (req, res, next) => {
   try {
     const { refreshToken } = req.body;
@@ -118,7 +270,7 @@ router.post('/refresh-token', async (req, res, next) => {
   }
 });
 
-// Get current user
+// ─── Get current user ────────────────────────────────────────────────────────
 router.get('/me', authenticate, async (req, res, next) => {
   try {
     const user = await prisma.user.findUnique({
@@ -144,7 +296,7 @@ router.get('/me', authenticate, async (req, res, next) => {
   }
 });
 
-// Logout (client-side token removal, this is a placeholder)
+// ─── Logout (client-side token removal, this is a placeholder) ───────────────
 router.post('/logout', (req, res) => {
   res.json({ message: 'Logged out' });
 });
