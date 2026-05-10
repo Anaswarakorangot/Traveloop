@@ -6,6 +6,7 @@ import MainLayout from './components/layout/MainLayout'
 import AuthLayout from './components/layout/AuthLayout'
 
 // Pages
+import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
@@ -43,6 +44,9 @@ function PublicRoute({ children }) {
 export default function AppRouter() {
   return (
     <Routes>
+      {/* Landing page */}
+      <Route path="/" element={<Landing />} />
+
       {/* Public routes */}
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
@@ -73,8 +77,7 @@ export default function AppRouter() {
       </Route>
 
       {/* Redirect */}
-      <Route path="/" element={<Navigate to="/dashboard" />} />
-      <Route path="*" element={<Navigate to="/dashboard" />} />
+      <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   )
 }
